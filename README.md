@@ -1,72 +1,128 @@
-# Bread's Engine / Project Setup Guide
+# Bread's Engine — Setup Guide
 
-## Overview  
-This project uses **w64devkit** as the development kit and **GLFW 3.4** for window/context creation with OpenGL on Windows. The instructions below assume you are using Windows 11 and have the setup as described.
+This project uses **GLFW** and **CMake** as the build system. Source code lives in `src/` and the build output (executables) is placed in `build/`.
 
-## Prerequisites  
-- Download and install w64devkit version **v2.4.0** (or later) from:  
-  https://github.com/skeeto/w64devkit/releases/tag/v2.4.0  
-- Download the pre-built GLFW “glfw-3.4.bin.WIN64.zip” (64-bit Windows) from the GLFW website.  
-- Extract the GLFW files and place them into your w64devkit directory as described below.
+Below are the minimal instructions to get the project compiling and running on Windows (using a MinGW-like toolchain such as w64devkit).
 
-## Directory Structure  
-Assuming your w64devkit is installed at `E:\w64devkit`, the relevant paths should look like this:
+---
 
-```
+## Prerequisites
 
-E:\w64devkit
-include\GLFW\glfw3.h
-glfw3native.h
-lib\libglfw3.a
-libglfw3dll.a
+* w64devkit (or another compatible GCC/MinGW toolchain) installed and on your `PATH`.
+  Example: `E:\w64devkit`
+* GLFW binaries for Windows (DLL + import/static libs) and headers. You should place them inside the project under a `libs/` layout shown below.
+
+---
+
+## Recommended project layout
 
 ```
-
-Your own project directory might look like:
-
+breads_engine/
+├─ CMakeLists.txt
+├─ README.md
+├─ libs/
+│  └─ include/
+│     └─ GLFW/
+│        ├─ glfw3.h
+│        └─ glfw3native.h
+├─ src/
+│  └─ main.cpp
+└─ build/                  # CMake out-of-source build directory (generated)
 ```
 
-E:\breads_engine
-main.cpp
-bin\   ← compiled executables
-lib\   ← optional additional libraries (if any)
+---
 
-````
+## CMake (example)
 
-## Compilation Command  
-To compile your project with g++ (from w64devkit) linking against GLFW and OpenGL, run:
+Add this minimal snippet to your `CMakeLists.txt` (adjust names/paths if needed):
 
-```bash
-g++ -o .\bin\main.exe .\main.cpp -lglfw3dll -lopengl32
-````
+```cmake
+cmake_minimum_required(VERSION 3.10)
+project(breads_engine VERSION 0.1.0 LANGUAGES C CXX)
 
-Explanation:
+# put built executables in build/ (or change as you like)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-* `-o .\bin\main.exe` — output executable into the `bin` folder.
-* `. \main.cpp` — your source file.
-* `-lglfw3dll` — link with GLFW dynamic-library import.
-* `-lopengl32` — link with the built-in OpenGL library on Windows.
+# point to local includes
+target_include_directories(breads_engine PRIVATE ${CMAKE_SOURCE_DIR}/libs/include)
 
-## Runtime DLL Placement
+# find OpenGL on Windows (opengl32)
+find_package(OpenGL REQUIRED)
 
-Because you are using the dynamic version of GLFW (`glfw3.dll`), you must ensure that the DLL is found at runtime. Windows looks for DLLs in:
-
-1. The directory containing your executable.
-2. System folders (e.g., `C:\Windows\System32`).
-3. Directories on the `PATH` environment variable.
-
-You mentioned you placed `glfw3.dll` in `System32`. That works, but a better practice is to place it in the same directory as your executable. For example:
-
-```
-E:\breads_engine\bin\main.exe
-E:\breads_engine\bin\glfw3.dll
+# link - glfw import lib + OpenGL
+target_link_libraries(breads_engine PRIVATE ${OPENGL_gl_LIBRARY} glfw3)
 ```
 
-Then you can simply launch `main.exe` without further configuration.
+> If you use the import library for the DLL named `libglfw3dll.a`, the target name `glfw3` should resolve when the import lib is on the linker path (see below).
 
-## Notes & Tips
+---
 
-* If you later switch to a **static** version of GLFW (linking the `.a` library statically), you can avoid the DLL requirement entirely.
-* Keep your project folder structure clear and separated: source (`.cpp`), headers, libraries, and output (`bin`).
-* If you add more dependencies or libraries, adjust the include paths (`-I`) and library paths (`-L`) accordingly.
-* Ensure your PATH or environment variables do not conflict with other versions of libraries you may have on your system.
+## How to build (out-of-source, recommended)
+
+From the project root:
+
+```powershell
+# create build files
+cmake -S . -B build -G "Unix Makefiles" -DCMAKE_C_COMPILER="C:/w64devkit/bin/gcc.exe" -DCMAKE_CXX_COMPILER="C:/w64devkit/bin/g++.exe"
+
+# build the project
+cmake --build build --config Debug
+```
+
+After a successful build the executable will be in `build/` (for example `build/breads_engine.exe`).
+
+---
+
+## Runtime: DLL placement / static linking note
+
+* If you link **dynamically** (using the import lib + `glfw3.dll`), Windows must find `glfw3.dll` at runtime. Place `glfw3.dll` in one of:
+
+  1. The same folder as the executable (`build/`), or
+  2. A folder included in your `PATH`, or
+  3. `C:\Windows\System32` (not recommended for project portability).
+* If you prefer to avoid DLLs, link the **static** version of GLFW (`libglfw3.a`) and build a static executable. Static linking may require defining `GLFW_INCLUDE_NONE`/`GLFW_STATIC` depending on how GLFW was built.
+
+---
+
+## Typical troubleshooting
+
+* `undefined reference to __imp_glClear` → you must link `opengl32` (CMake `find_package(OpenGL)` or `target_link_libraries(... opengl32)`).
+* `glfw3.dll was not found` → copy `glfw3.dll` to `build/` or use static linking.
+* If CMake does not find your local libs, verify `libs/include` and `libs/lib` exist and contain the expected files.
+
+---
+
+## .gitignore (suggestion)
+
+Add these lines to avoid committing build artifacts and binaries:
+
+```
+# build artifacts
+/build/
+/bin/
+
+# object files and executables
+*.o
+*.obj
+*.exe
+*.out
+
+# DLLs (if you prefer not to track them)
+*.dll
+
+# Visual Studio / IDE files (optional)
+.vscode/
+.idea/
+```
+
+---
+
+## Quick run
+
+1. Build with CMake as shown above.
+2. Ensure `glfw3.dll` is next to the produced `.exe` (if using the DLL).
+3. Run:
+
+```powershell
+.\build\breads_engine.exe
+```
