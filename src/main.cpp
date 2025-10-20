@@ -9,7 +9,7 @@ int main()
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Bread's Engine", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "Bread's Engine", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -18,6 +18,15 @@ int main()
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        glfwTerminate();
+        return -1;
+    }
+    
+
+    glClearColor(0.5f, 0.25f, 0.5f, 1.0f);
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
