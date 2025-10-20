@@ -1,0 +1,17 @@
+# Ignore compiled binaries
+/bin/
+/build/
+
+# Ignore object files
+*.o
+
+# Ignore executable files
+*.exe
+*.out
+
+# Ignore temporary libraries
+*.dll
+*.lib
+
+# Ignore environment files
+.env
