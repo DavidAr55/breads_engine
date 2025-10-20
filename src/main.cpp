@@ -1,7 +1,6 @@
-#define GLFW_DLL
-#include <GLFW/glfw3.h>
+#include "config.h"
 
-int main(void)
+int main()
 {
     GLFWwindow* window;
 
@@ -10,7 +9,7 @@ int main(void)
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(640, 480, "Bread's Engine", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
